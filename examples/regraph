@@ -1,0 +1,18 @@
+#!/usr/bin/perl -w
+
+use strict;
+use lib '../lib';
+use lib 'lib';
+use Graph::Regexp;
+
+my $format = shift || 'as_ascii';
+my $debug = shift || undef;
+my $gr = Graph::Regexp->new( debug => $debug );
+
+# slurp mode
+$/ = undef; my $doc = <>;
+my $graph = $gr->parse(\$doc)->as_graph();
+
+binmode STDOUT, 'utf8' or die ("Cannot set binmode('utf8') on STDOUT: $!");
+print $graph->$format();
+
