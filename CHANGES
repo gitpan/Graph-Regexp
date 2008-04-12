@@ -1,16 +1,25 @@
 Revision history for Perl extension Graph::Regexp
 
-0.03 2006-10-27 0.03 Tels 25 tests
+2008-04-12 v0.03 Tels 52 tests
+  * require Graph::Easy v0.62 (for various bugfixes)
+  * add support for the following nodes:
+    + ^ (BOL)
+    + $ (EOL)
+    + \z (EOS)
+    + \Z (SEOL)
+    + \A (SBOL)
+
+2006-10-27 v0.03 Tels 25 tests
   * really works now for common regexps
   * get rid of Regexp::Parser
   * require Graph::Easy v0.49 (for various bugfixes)
 
-0.02 2006-08-06 0.02 Tels 10 tests
+2006-08-06 v0.02 Tels 10 tests
   * some fixes to the logic by using Regexp::Parser
   * fix the POD to get rid of Copy&Paste nonsense
   * prepare for release
 
-0.01 2006-07-24 0.01 Tels 10 tests (unreleased)
+2006-07-24 v0.01 Tels 10 tests (unreleased)
   * require Graph::Easy v0.46
   * require Perl 5.8.1 for Unicode support
   * first version to actually do something nearly usefull

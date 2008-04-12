@@ -7,27 +7,14 @@ use strict;
 
 BEGIN
    {
-   plan tests => 11;
+   plan tests => 10;
    chdir 't' if -d 't';
    use lib '../lib';
    use_ok ("Graph::Regexp") or die($@);
    };
 
 #############################################################################
-
-can_ok ('Graph::Regexp',
-  qw/
-    new
-    graph
-    decompose
-    reset
-    option
-    as_ascii
-    as_graph
-  /);
-
-#############################################################################
-# graph() interface
+# inputs:
 
 my $parens = <<EOF
    1: OPEN1(3)
@@ -49,6 +36,10 @@ my $noparens = <<EOF
 EOF
 ;
 
+#############################################################################
+#############################################################################
+# tests:
+
 my $graph = Graph::Regexp->graph( \$parens );
 
 is (ref($graph), 'Graph::Easy');
@@ -59,7 +50,7 @@ is (scalar $graph->nodes(), 5, '5 nodes');
 is (scalar $graph->edges(), 5, '5 edges');
 
 #############################################################################
-# No with no parens
+# Now with no parens
 
 my $graph_no = Graph::Regexp->graph( \$noparens );
 

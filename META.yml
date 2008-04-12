@@ -15,4 +15,4 @@ no_index:
 requires: 
   Graph::Easy: 0.49
   Scalar::Util: 1.13
-version: 0.03
+version: 0.04

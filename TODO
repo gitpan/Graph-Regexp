@@ -1,10 +1,13 @@
 
 * support /a(1|0)+/
 
-* we should completely remove STAR() and anything below it:
+* Removing of always matching nodes should only be done on user request
+  for a "simplified" graph:
+
+* we could completely remove STAR() and anything below it:
   (it will always match)
 
-	linux:/home/te/perl/graph/Graph-Regexp-0.02 # perl -Mre=debug -e '/a1*/'
+	# perl -Mre=debug -e '/a1*/'
 	Freeing REx: `","'
 	Compiling REx `a1*'
 	size 6 Got 52 bytes for offset annotations.
@@ -15,10 +18,10 @@
 	   4:   EXACT <1>(0)
 	   6: END(0)
 
-* we should completely remove CURLYM where (left == 0) and anything below it:
+* we could completely remove CURLYM where (left == 0) and anything below it:
   (it will always match)
 
-	linux:/home/te/perl/graph/Graph-Regexp-0.02 # perl -Mre=debug -e '/a(1|o)*/'
+	# perl -Mre=debug -e '/a(1|o)*/'
 	Freeing REx: `","'
 	Compiling REx `a(1|o)*'
 	size 17 Got 140 bytes for offset annotations.

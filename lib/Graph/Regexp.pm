@@ -1,15 +1,14 @@
 ############################################################################
 # Generate flowcharts from Regexp debug dumpes
 #
-# (c) by Tels 2006.
-#############################################################################
 
 package Graph::Regexp;
 
+require 5.008001;
 use Graph::Easy;
 use Graph::Easy::Base;
 
-$VERSION = 0.03;
+$VERSION = 0.04;
 @ISA = qw/Graph::Easy::Base/;
 
 use strict;
@@ -22,7 +21,7 @@ sub _init
   my ($self, $args) = @_;
 
   $self->{options} = {};
-  $self->{debug} = $args->{debug};
+  $self->{debug} = $args->{debug} || 0;
   $self->reset();
   $self;
   }
@@ -136,6 +135,24 @@ sub _parse
   $g->set_attribute('node.nothing', 'label', "\\''");
   $g->set_attribute('node.nothing', 'title', "Nothing (always matches)");
 
+  # Special nodes:
+  #  + ^ (BOL)
+  #  + $ (EOL)
+  #  + \z (EOS)
+  #  + \Z (SEOL)
+  #  + \A (SBOL)
+
+  $g->set_attribute('node.bol', 'title', 'Begin Of Line');
+  $g->set_attribute('node.bol', 'label', 'BOL (^)');
+  $g->set_attribute('node.eol', 'title', 'End Of Line');
+  $g->set_attribute('node.eol', 'label', 'EOL ($)');
+  $g->set_attribute('node.eos', 'title', 'End Of String');
+  $g->set_attribute('node.eos', 'label', 'EOS (\z)');
+  $g->set_attribute('node.seol', 'title', 'String end or End Of Line');
+  $g->set_attribute('node.seol', 'label', 'SEOL (\Z)');
+  $g->set_attribute('node.sbol', 'title', 'String begin or Begin Of Line');
+  $g->set_attribute('node.sbol', 'label', 'SBOL (\A)');
+
   $g->set_attributes('node.fail', { fill => 'darkred', color => 'white' } );
   $g->set_attributes('node.success', { fill => 'darkgreen', color => 'white' } );
 
@@ -148,9 +165,10 @@ sub _parse
 	'color' => 'darkred'
 	} );
 
-#   The general family of this object. These are any of: 
+#  The general family of this object. These are any of: 
 #   alnum, anchor, anyof, anyof_char, anyof_class, anyof_range, 
-#   assertion, branch, close, clump, digit, exact, flags, group, groupp, minmod, prop, open, quant, ref, reg_any.
+#   assertion, bol, branch, close, clump, digit, exact, flags, group, groupp,
+#   minmod, prop, open, quant, ref, reg_any.
 
   # first we parse the following text:
 
@@ -173,15 +191,19 @@ sub _parse
   my $stack = $self->{stack};
   # to quickly find entries by their id
   my $entries = $self->{entries};
-  
-  print STDERR "# Input: \n$text\n" if $self->{debug};
+
+  $text =~ s/[\r\n]\z//;
+
+  print STDERR "# Input: \n# '$text'\n" if $self->{debug};
 
   my @lines = split /\n/, $text; my $index = 0;
   for my $line (@lines)
     {
     # ignore all other lines
     next unless $line =~ /^\s+(\d+):(\s+)[A-Z]/;
-   
+
+    print STDERR "# Parsing line: '$line'\n" if $self->{debug} > 1;
+
     # level: ' ' => 0, '   ' => 1 etc
     my $entry = { level => (length($2)-1) / 2, id => $1 };
 
@@ -699,14 +721,14 @@ L<Graph::Easy>, L<Graph::Flowchart>
 =head1 COPYRIGHT AND LICENSE
 
 This library is free software; you can redistribute it and/or modify
-it under the same terms of the GPL version 2.
+it under the same terms of the GPL version 2 or later.
 See the LICENSE file for information.
 
 X<gpl>
 
 =head1 AUTHOR
 
-Copyright (C) 2006 by Tels L<http://bloodgate.com>
+Copyright (C) 2006-2008 by Tels L<http://bloodgate.com>
 
 X<tels>
 X<bloodgate.com>

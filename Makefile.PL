@@ -1,23 +1,20 @@
 # We need at least Perl 5.8.1 for proper Unicode support
-require 5.8.1;
+require 5.008001;
 use strict;
 
 # Load the Module::Install bundled in ./inc/
 use inc::Module::Install;
 
-# The name of your distribution
-name		'Graph-Regexp';
-
 # Get most of the details from the primary module
 all_from	'lib/Graph/Regexp.pm';
 
 requires	'Scalar::Util'		=> 1.13,
-		'Graph::Easy'		=> 0.49;
+		'Graph::Easy'		=> 0.62;
 
-build_requires  'Test::More'		=> 0.42,
+build_requires  'Test::More'		=> 0.62,
 		'Test::Differences'	=> 0.47;
 
-license		'gpl';			# v2.0 only
+license		'gpl';
 
 author		'Tels <nospam-abuse@bloodgate.com>';
 

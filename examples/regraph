@@ -1,11 +1,15 @@
 #!/usr/bin/perl -w
 
+# Usage:
+#  perl -Mre=debug -e '/^[ab]$/' 2>&1 | perl -Ilib examples/regraph ascii
+
 use strict;
 use lib '../lib';
 use lib 'lib';
 use Graph::Regexp;
 
 my $format = shift || 'as_ascii';
+$format = 'as_' . $format unless $format =~ /^as_/;
 my $debug = shift || undef;
 my $gr = Graph::Regexp->new( debug => $debug );
 
