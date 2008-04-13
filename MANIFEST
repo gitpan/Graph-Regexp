@@ -21,7 +21,10 @@ README
 SIGNATURE
 t/01_basics.t
 t/02_branch.t
-t/03_start_end.t
+t/03_specials.t
+t/04_quote.t
+t/05_perl5_10.t
+t/06_curlym.t
 t/pod.t
 t/pod_cov.t
 TODO

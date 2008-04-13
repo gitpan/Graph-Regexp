@@ -7,7 +7,7 @@ use strict;
 
 BEGIN
    {
-   plan tests => 28;
+   plan tests => 43;
    chdir 't' if -d 't';
    use lib '../lib';
    use_ok ("Graph::Regexp") or die($@);
@@ -53,15 +53,23 @@ my $sbol_and_seol = <<SBOL_SEOL
 SBOL_SEOL
 ;
 
+my $alnum = <<ALNUM
+   1: ALNUM(2)
+   2: NALNUM(3)
+   3: END(0)
+ALNUM
+;
+
 #############################################################################
 #############################################################################
 # tests:
 
-_check_graph($bol, 5,5, 1,'BOL (^)' );
-_check_graph($eol, 5,5, 3,'EOL ($)' );
-_check_graph($eos, 5,5, 3,'EOS (\\z)' );
-_check_graph($bol_and_eol, 6,7, 1,'BOL (^)', 4, 'EOL ($)' );
-_check_graph($sbol_and_seol, 6,7, 1,'SBOL (\\A)', 4, 'SEOL (\\Z)' );
+_check_graph($bol, 5,5, 1,'^','bol' );
+_check_graph($eol, 5,5, 3,'$','eol' );
+_check_graph($eos, 5,5, 3,'\\z','eos' );
+_check_graph($bol_and_eol, 6,7, 1,'^', 'bol', 4, '$', 'eol' );
+_check_graph($sbol_and_seol, 6,7, 1,'\\A','sbol', 4, '\\Z','seol' );
+_check_graph($alnum, 5,5, 1,'\\w','alnum', 2, '\\W','nalnum' );
 
 #############################################################################
 
@@ -84,6 +92,8 @@ sub _check_graph
     {
     my $nr = shift @checks;
     my $label = shift @checks;
+    my $class = shift @checks;
     is ($graph->node($nr)->label(), $label, "$label included");
+    is ($graph->node($nr)->class(), 'node.' . $class, "$label is correct");
     }
   }

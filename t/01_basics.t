@@ -22,6 +22,7 @@ can_ok ('Graph::Regexp',
     option
     as_ascii
     as_graph
+    graph_label
   /);
 
 #############################################################################

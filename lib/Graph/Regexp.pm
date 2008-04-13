@@ -8,10 +8,13 @@ require 5.008001;
 use Graph::Easy;
 use Graph::Easy::Base;
 
-$VERSION = 0.04;
+$VERSION = 0.05;
 @ISA = qw/Graph::Easy::Base/;
 
 use strict;
+
+# Perl 5.8.8, might be different for 5.10?
+use constant MAX_MATCHES => 32767;
 
 #############################################################################
 #############################################################################
@@ -104,9 +107,33 @@ sub reset
   $self;
   }
 
+sub graph_label
+  {
+  # get/set the label of the graph
+  my ($self) = shift;
+
+  my $g = $self->{graph};
+  if (@_ > 0)
+    {
+    $g->set_attribute('label',$_[0]);
+    }
+  $g->label();
+  } 
+
 #############################################################################
 #############################################################################
 # main parse routine, recursive
+
+sub _setup_nodeclass
+  {
+  # add the attributes for one node class
+  my ($self, $class, $title, $label) = @_;
+
+  my $g = $self->{graph};
+
+  $g->set_attribute("node.$class", 'title', $title);
+  $g->set_attribute("node.$class", 'label', $label);
+  }
 
 sub _parse
   {
@@ -136,22 +163,26 @@ sub _parse
   $g->set_attribute('node.nothing', 'title', "Nothing (always matches)");
 
   # Special nodes:
-  #  + ^ (BOL)
-  #  + $ (EOL)
-  #  + \z (EOS)
-  #  + \Z (SEOL)
-  #  + \A (SBOL)
+  #  ^ (BOL)
+  #  $ (EOL)
+  #  \z (EOS)
+  #  \Z (SEOL)
+  #  \A (SBOL)
+  #  \b \B (BOUND, NBOUND)
+  #  \d \D (DIGIT, NDIGIT)
+  #  \w \W (ALNUM, NALNUM)
 
-  $g->set_attribute('node.bol', 'title', 'Begin Of Line');
-  $g->set_attribute('node.bol', 'label', 'BOL (^)');
-  $g->set_attribute('node.eol', 'title', 'End Of Line');
-  $g->set_attribute('node.eol', 'label', 'EOL ($)');
-  $g->set_attribute('node.eos', 'title', 'End Of String');
-  $g->set_attribute('node.eos', 'label', 'EOS (\z)');
-  $g->set_attribute('node.seol', 'title', 'String end or End Of Line');
-  $g->set_attribute('node.seol', 'label', 'SEOL (\Z)');
-  $g->set_attribute('node.sbol', 'title', 'String begin or Begin Of Line');
-  $g->set_attribute('node.sbol', 'label', 'SBOL (\A)');
+  $self->_setup_nodeclass('bol',   'BOL (Begin Of Line)', '^');
+  $self->_setup_nodeclass('eol',   'EOL (End Of Line)', '$');
+  $self->_setup_nodeclass('eos',   'EOS (End Of String)', '\\z');
+  $self->_setup_nodeclass('seol',  'SEOL (String end or End Of Line)', '\\Z');
+  $self->_setup_nodeclass('sbol',  'SBOL (String begin or Begin Of Line)', '\\A');
+  $self->_setup_nodeclass('bound',   'BOUND (Boundary)', '\\b');
+  $self->_setup_nodeclass('nbound',  'NBOUND (Non-boundary)', '\\B');
+  $self->_setup_nodeclass('digit',   'DIGIT (Digit)', '\\d');
+  $self->_setup_nodeclass('ndigit',  'NDIGIT (Non-digit)', '\\D');
+  $self->_setup_nodeclass('alnum',   'ALNUM (Alphanumeric)', '\\w');
+  $self->_setup_nodeclass('nalnum',  'NALNUM (Non-alphanumeric)', '\\W');
 
   $g->set_attributes('node.fail', { fill => 'darkred', color => 'white' } );
   $g->set_attributes('node.success', { fill => 'darkgreen', color => 'white' } );
@@ -159,6 +190,9 @@ sub _parse
   $g->set_attributes('edge.match', { 
 	'label' => 'match',
 	'color' => 'darkgreen'
+	} );
+  $g->set_attributes('edge.always', { 
+	'label' => 'always',
 	} );
   $g->set_attributes('edge.fail', { 
 	'label' => 'fail',
@@ -168,7 +202,8 @@ sub _parse
 #  The general family of this object. These are any of: 
 #   alnum, anchor, anyof, anyof_char, anyof_class, anyof_range, 
 #   assertion, bol, branch, close, clump, digit, exact, flags, group, groupp,
-#   minmod, prop, open, quant, ref, reg_any.
+#   minmod, open, prop, sol, eol, seol, sbol, quant, ref, reg_any,
+#   star, plus ...
 
   # first we parse the following text:
 
@@ -210,22 +245,33 @@ sub _parse
     # "7: EXACT <foo>(9)" => "EXACT <foo>(9)"
     $line =~ s/^\s+\d+:\s+//;
    
-    # OPEN1(3) 
-    if ($line =~ /^([A-Z][A-Z0-9]+)\((\d+)\)/)
+    # OPEN1(3)  or OPEN1 (3)
+    if ($line =~ /^([A-Z][A-Z0-9]+)\s*\((\d+)\)/)
       {
       $entry->{class} = lc($1);
       $entry->{next} = $2;
       $entry->{exact} = '';
       }
-    # EXACT <o>(16)
-    elsif ($line =~ /^([A-Z][A-Z0-9]+)(\s*<([^>]+)>)?\((\d+)\)/)
+    # EXACT <o>(16) or EXACT <o> (16)
+    elsif ($line =~ /^([A-Z][A-Z0-9-]+)(\s*<(.+)>)?\s*\((\d+)\)/)
       {
       $entry->{class} = lc($1);
-      $entry->{exact} = "\\\"$3\\\"";
-      $entry->{title} = "EXACT <$3>";
+      my $t = $3;
       $entry->{next} = $4;
+      $t =~ s/(\$|\@|\\)/\\$1/g;		# quote $, @ and \
+      $entry->{exact} = "\\\"$t\\\"";
+      $entry->{title} = "EXACT <$t>";
       }
-    elsif ($line =~ /^([A-Z][A-Z0-9]+)(\s*\[([^\]]+)\])?\((\d+)\)/)
+    # TRIE-EXACT [bo](9)
+    elsif ($line =~ /^TRIE-EXACT\s*(\[([^\]]+)\])\s*?\((\d+)\)/)
+      {
+      $entry->{class} = 'trie';
+      $entry->{title} = "TRIE-EXACT <$1>";
+      $entry->{exact} = "$1";
+      $entry->{next} = $2;
+      }
+    # ANYOF[ab](8)
+    elsif ($line =~ /^([A-Z][A-Z0-9-]+)\s*(\[([^\]]+)\])\s*?\((\d+)\)/)
       {
       $entry->{class} = lc($1);
       if ($entry->{class} eq 'anyof')
@@ -243,14 +289,34 @@ sub _parse
       $entry->{title} = "EXACT <$3>";
       $entry->{next} = $4;
       }
-    # CURLY {0,1}(22)
-    elsif ($line =~ /^([A-Z][A-Z0-9]+)\s*\{(\d+),(\d+)\}\((\d+)\)/)
+    # CURLY {0,1}(22) or CURLY {0,1} (22)
+    elsif ($line =~ /^([A-Z][A-Z0-9]+)\s*\{(\d+),(\d+)\}\s*\((\d+)\)/)
       {
       $entry->{class} = lc($1);
       $entry->{next} = $4;
       $entry->{min} = $2;
       $entry->{max} = $3;
-      $entry->{exact} = "\{$self->{min},$self->{max}\}";
+      $entry->{exact} = "\{$entry->{min},$entry->{max}\}";
+      }
+    # CURLYM[1] {0,1}(22) or CURLY {0,1} (22) or CURLYX[1] {1,2}(22)
+    elsif ($line =~ /^([A-Z][A-Z0-9]+)\[[^]]\]\s*\{(\d+),(\d+)\}\s*\((\d+)\)/)
+      {
+      $entry->{class} = lc($1);
+      $entry->{next} = $4;
+      $entry->{min} = $2;
+      $entry->{max} = $3;
+      $entry->{exact} = "\{$entry->{min},$entry->{max}\}";
+      # make curlym, curly and curlyx all "curly"
+      $entry->{class} = 'curly' if $entry->{class} =~ /^curly/;
+      }
+    # PLUS (22)
+    elsif ($line =~ /^PLUS\s*\((\d+)\)/)
+      {
+      $entry->{class} = 'plus';
+      $entry->{next} = $1;
+      $entry->{min} = 1;
+      $entry->{max} = MAX_MATCHES;
+      $entry->{exact} = "\{$entry->{min},$entry->{max}\}";
       }
     $entry->{class} =~ s/[0-9]//g;	# OPEN1 => open
     $entry->{index} = $index++;
@@ -275,7 +341,7 @@ sub _parse
   if (keys %$entries == 0)
     {
     my $edge = $g->add_edge( $root, $self->{success});
-    $edge->set_attribute('class','match');
+    $edge->set_attribute('class','always');
     return $self;
     }
 
@@ -325,6 +391,17 @@ sub _parse
   my $next = $self->_find_node($stack->[0]);
   my $edge = $g->add_edge( $root, $next);
 
+  # The "NOTHING" node has no predecessor and needs to be weeded out:
+  #
+  #  1: CURLYM[1] {0,32767}(15)
+  #  5:   BRANCH(8)
+  #  6:     EXACT <foo>(13)
+  #  8:   BRANCH(11)
+  #  9:     EXACT <bar>(13)
+  # 13:   SUCCEED(0)
+  # 14:   NOTHING(15)
+  # 15: END(0)
+
   ###########################################################################
   ###########################################################################
   # main conversion loop
@@ -336,6 +413,13 @@ sub _parse
     my $entry = $stack->[$i];
 
     next unless exists $entry->{node};
+
+    if ($entry->{class} eq 'nothing' && $entry->{node}->predecessors() == 0)
+      {
+      # a nothing node with no incoming connection, filter it out
+      $g->del_node($entry->{node});
+      next;
+      }
 
     # the "match" egde goes to the next part
     my $next = $self->_find_next($entry);
@@ -351,8 +435,13 @@ sub _parse
       }
 
     # nothing nodes do not have a fail edge, they match always
-    next if $entry->{class} eq 'nothing';
-
+    if ( ($entry->{class} eq 'nothing') ||
+         (defined $entry->{min} && $entry->{min} == 0) )
+      {
+      $edge->set_attribute('class','always');
+      next;
+      }
+     
     # generate the fail edge:
 
     # if the next node is $self->{success}, then fail must be $self->{fail}
@@ -588,7 +677,7 @@ __END__
 
 =head1 NAME
 
-Graph::Regexp - Create graphical flowchart from an regular expression
+Graph::Regexp - Create graphical flowchart from a regular expression
 
 =head1 SYNOPSIS
 
@@ -709,6 +798,13 @@ Return the internal data structure as C<Graph::Easy> object.
 	print $parser->as_ascii();
 
 Return the graph as ASCII art. Shortcut for C<$parser->as_graph->as_ascii()>.
+
+=head2 graph_label()
+
+	my $label = $parser->graph_label();
+	$parser->graph_label('/^foo|bar/');
+
+Set or get the label of the graph.
 
 =head1 BUGS
 

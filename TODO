@@ -1,5 +1,9 @@
 
-* support /a(1|0)+/
+* support /a(1|0)+/ aka matching more than one time
+
+* /(foo){1,2}/
+* /(foo|bar){1,2}/
+* /((foo|bar)){1,2}/
 
 * Removing of always matching nodes should only be done on user request
   for a "simplified" graph:

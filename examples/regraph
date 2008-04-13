@@ -15,6 +15,11 @@ my $gr = Graph::Regexp->new( debug => $debug );
 
 # slurp mode
 $/ = undef; my $doc = <>;
+
+# remove text preceding the regexp, important if you do:
+# use -Mcharnames=:full, because this compiles other regexps, too:
+$doc =~ s/(.|[\n\r])*Compiling REx.*?[\r\n]//m;
+
 my $graph = $gr->parse(\$doc)->as_graph();
 
 binmode STDOUT, 'utf8' or die ("Cannot set binmode('utf8') on STDOUT: $!");
